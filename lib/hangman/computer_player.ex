@@ -11,22 +11,15 @@ defmodule Hangman.ComputerPlayer do
       letters_left:    (?a..?z) |>Enum.into([]),
     }
 
-    IO.inspect(solver.candidate_words)
-
     make_a_move(game, solver)
   end
 
   def make_a_move(game, solver) do
     [ guess | t ] = solver.letters_left
-    #{ solver, guess } = get_guess(game, solver)
+    #{ new_solver, guess } = get_guess(game, solver)
     { game, status, guessed } = Game.make_move(game, <<guess::utf8>>)
-    analyze_move(status, game, %{solver | letters_left: t}, guess)
-    #analyze_move(status, game, solver, guess)
-
-    # IO.puts "Guess is: #{<<guess::utf8>>}"
-    # IO.inspect t
-    # IO.inspect status
-    # IO.inspect guessed
+    analyze_move(status, game, %{solver | letters_left: Enum.shuffle(t)}, guess)
+    #analyze_move(status, game, new_solver, guess)
   end
 
   def analyze_move(:good_guess, game, solver, guess) do
@@ -35,6 +28,9 @@ defmodule Hangman.ComputerPlayer do
     IO.puts ""
     #solver = remove_impossible(solver, game.word, guess)
     #solver = remove_impossible(solver, Game.word_as_string(game), guess)
+
+    IO.inspect solver.letters_left
+
     make_a_move(game, solver)
   end
 
@@ -49,6 +45,8 @@ defmodule Hangman.ComputerPlayer do
     #|> remove_words_not_matching_pattern(game.word)
 
     # solver = %{ solver | candidate_words: new_words }
+
+    IO.inspect solver.letters_left 
 
     make_a_move(game, solver)
   end
@@ -109,29 +107,29 @@ defmodule Hangman.ComputerPlayer do
     |> Enum.reduce(0, &(bor(1 <<< &1, &2)))
   end
 
-  defp remove_words_with_letter(candidates, exclude_letter) do
-    char_bit = word_signature(exclude_letter)
-    candidates
-    |> Enum.filter(fn { _, signature } -> (signature &&& char_bit) == 0 end)
-  end
-
-  defp remove_words_not_matching_pattern(candidates, word_pattern) do
-    re = regexp_from_pattern(word_pattern)
-    candidates
-    |> Enum.filter(fn { word, _ } -> word =~ re end)
-  end
-
-  defp regexp_from_pattern(word_pattern) do
-    re_for_word_char = fn
-      ({_ch, false}) ->  "."
-      ({ch,  _    }) ->  ch
-    end
-
-    word_pattern
-    |> Enum.map(re_for_word_char)
-    |> Enum.join
-    |> Regex.compile!
-  end
+  # defp remove_words_with_letter(candidates, exclude_letter) do
+  #   char_bit = word_signature(exclude_letter)
+  #   candidates
+  #   |> Enum.filter(fn { _, signature } -> (signature &&& char_bit) == 0 end)
+  # end
+  #
+  # defp remove_words_not_matching_pattern(candidates, word_pattern) do
+  #   re = regexp_from_pattern(word_pattern)
+  #   candidates
+  #   |> Enum.filter(fn { word, _ } -> word =~ re end)
+  # end
+  #
+  # defp regexp_from_pattern(word_pattern) do
+  #   re_for_word_char = fn
+  #     ({_ch, false}) ->  "."
+  #     ({ch,  _    }) ->  ch
+  #   end
+  #
+  #   word_pattern
+  #   |> Enum.map(re_for_word_char)
+  #   |> Enum.join
+  #   |> Regex.compile!
+  # end
   #
   #
   #
