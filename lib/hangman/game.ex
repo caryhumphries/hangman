@@ -107,7 +107,7 @@ Here's this module being exercised from an iex session:
 
     iex(13)> { game, state, guess } = G.make_move(game, "b")
     . . .
-    iex(14)> state                                          
+    iex(14)> state
     :bad_guess
 
     iex(15)> { game, state, guess } = G.make_move(game, "f")
@@ -142,6 +142,12 @@ Here's this module being exercised from an iex session:
 
   @spec new_game :: state
   def new_game do
+    %{
+      word: Hangman.Dictionary.random_word,
+      turn: 10,
+      good_ch: "",
+      bad_ch: ""
+    }
   end
 
 
@@ -152,6 +158,12 @@ Here's this module being exercised from an iex session:
   """
   @spec new_game(binary) :: state
   def new_game(word) do
+    %{
+      word: word,
+      turn: 10,
+      good_ch: "",
+      bad_ch: ""
+    }
   end
 
 
@@ -177,6 +189,35 @@ Here's this module being exercised from an iex session:
 
   @spec make_move(state, ch) :: { state, atom, optional_ch }
   def make_move(state, guess) do
+    if state.turn > 1 do
+      if Enum.member?(String.codepoints(state.word), guess) do
+        if is_winner?(state, guess) do
+          {
+            %{state | good_ch: state.good_ch <> guess},
+            :won,
+            nil
+          }
+        else
+          {
+            %{state | good_ch: state.good_ch <> guess},
+            :good_guess,
+            guess
+          }
+        end
+      else
+        {
+          %{state | turn: state.turn - 1, bad_ch: state.bad_ch <> guess},
+          :bad_guess,
+          guess
+        }
+      end
+    else
+      {
+        %{state | turn: state.turn - 1, bad_ch: state.bad_ch <> guess},
+        :lost,
+        nil
+      }
+    end
   end
 
 
@@ -186,9 +227,16 @@ Here's this module being exercised from an iex session:
   Return the length of the current word.
   """
   @spec word_length(state) :: integer
-  def word_length(%{ word: word }) do
-  end
+  #def word_length(%{ word: word }) do  # You have made the assumption that
+  #  String.length(word)                # our game state map uses the word: atom
+  #end                                  # to store the current hidden word.
 
+  def word_length(state) do             # Adjusted to use the game state as the
+    String.length(state.word)           # parameter rather than assuming that
+  end                                   # there is a word: atom in the state...
+                                        # which is a moot point because it does.
+                                        # However, I like it better this way and
+                                        # both functions work as intended.
   @doc """
   `list = letters_used_so_far(game)`
 
@@ -199,6 +247,7 @@ Here's this module being exercised from an iex session:
 
   @spec letters_used_so_far(state) :: [ binary ]
   def letters_used_so_far(state) do
+    String.codepoints(state.good_ch <> state.bad_ch)
   end
 
   @doc """
@@ -211,6 +260,7 @@ Here's this module being exercised from an iex session:
 
   @spec turns_left(state) :: integer
   def turns_left(state) do
+    state.turn
   end
 
   @doc """
@@ -224,6 +274,22 @@ Here's this module being exercised from an iex session:
 
   @spec word_as_string(state, boolean) :: binary
   def word_as_string(state, reveal \\ false) do
+    if reveal do
+      String.codepoints(state.word)
+      |> str_spacer
+      |> to_string
+      |> String.trim
+    else
+      remove_hidden_ch(
+        String.codepoints(state.word),
+        String.codepoints(state.good_ch)
+        )
+      |> to_string
+      |> String.trim
+    end
+
+    # return a string of "_ _ _ _ _" and show correct guessed letters
+    # or return the full word if reveal is true "w o r d"
   end
 
   ###########################
@@ -231,5 +297,38 @@ Here's this module being exercised from an iex session:
   ###########################
 
   # Your private functions go here
+  defp str_spacer([]) do
+    []
+  end
+
+  defp str_spacer([h | t]) do
+    [ h <> " " | str_spacer(t) ]
+  end
+
+  defp remove_hidden_ch([], _) do
+    []
+  end
+
+  defp remove_hidden_ch([h | t], guessed) do
+    if Enum.member?(guessed, h) do
+      [ h <> " "| remove_hidden_ch(t, guessed)]
+    else
+      [ "_ " | remove_hidden_ch(t, guessed)]
+    end
+  end
+
+  defp is_winner?(state, ch) do
+    String.equivalent?(
+      to_string(
+        remove_hidden_ch(
+        String.codepoints(state.word),
+        String.codepoints(state.good_ch <> ch)
+      )),
+      to_string(
+        str_spacer(
+        String.codepoints(state.word)
+      ))
+    )
+  end
 
  end
